@@ -1,0 +1,29 @@
+# Copyright (c) 2024 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+if SHIELD_PROSPECTOR_SCANNER_OLED
+
+config ZMK_KEYBOARD_NAME
+    default "Prospector"
+
+config ZMK_DISPLAY
+    default y
+
+# I2C bus for the OLED
+config I2C
+    default y
+
+# Monochrome LVGL: 1 bit per pixel
+config LV_Z_BITS_PER_PIXEL
+    default 1
+
+choice LV_COLOR_DEPTH
+    default LV_COLOR_DEPTH_1
+endchoice
+
+# Custom status screen (mono scanner UI)
+choice ZMK_DISPLAY_STATUS_SCREEN
+    default ZMK_DISPLAY_STATUS_SCREEN_CUSTOM
+endchoice
+
+endif
