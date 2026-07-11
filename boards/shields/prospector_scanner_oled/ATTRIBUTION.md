@@ -13,7 +13,7 @@ scanner.
 Derived files (under `src/`):
 
 - `custom_status_screen.c` / `.h` (status-screen layout / assembly)
-- `widgets/battery_status.c` / `.h`
+- `widgets/battery_status.c` / `.h` (optional legacy battery widget)
 - `widgets/layer_status.c` / `.h`
 - `widgets/modifiers.c` / `.h`, `widgets/modifiers_sym.c`
 - `widgets/output_status.c` / `.h`, `widgets/output_status_sym.c`

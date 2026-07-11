@@ -19,7 +19,11 @@
 #include <zmk/status_scanner.h>
 #include <zmk/status_advertisement.h>
 #include <zmk/endpoints.h>
+#if IS_ENABLED(CONFIG_ZMK_BATTERY)
+#include <zmk/battery.h>
+#endif
 
+#include "widgets/battery_gauge.h"
 #include "widgets/battery_status.h"
 #include "widgets/layer_status.h"
 #include "widgets/modifiers.h"
@@ -34,17 +38,30 @@
 /* Provided by scanner_stub.c: drains the BT-RX ring buffer into keyboards[]. */
 void scanner_process_incoming(void);
 
+#if IS_ENABLED(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE)
+/* The dongle's (scanner device's) own battery, if it reports one. */
+static uint8_t dongle_battery(void) {
+#if IS_ENABLED(CONFIG_ZMK_BATTERY)
+    return zmk_battery_state_of_charge();
+#else
+    return 0;
+#endif
+}
+#endif /* CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE */
+
 static void transport_update_cb(lv_timer_t *timer) {
     ARG_UNUSED(timer);
 
     scanner_process_incoming();
 
     int idx = zmk_status_scanner_get_primary_keyboard();
-    if (idx < 0) {
-        return; /* nothing seen yet; widgets keep their initial (blank) state */
-    }
-    struct zmk_keyboard_status *kbd = zmk_status_scanner_get_keyboard(idx);
+    struct zmk_keyboard_status *kbd =
+        (idx >= 0) ? zmk_status_scanner_get_keyboard(idx) : NULL;
     if (kbd == NULL) {
+#if IS_ENABLED(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE)
+        /* No keyboard yet: still show the dongle gauge, halves empty. */
+        zmk_widget_battery_gauge_set(0, dongle_battery(), 0);
+#endif
         return;
     }
     const struct zmk_status_adv_data *d = &kbd->data;
@@ -55,11 +72,31 @@ static void transport_update_cb(lv_timer_t *timer) {
     const bool ble_conn = sf & ZMK_STATUS_FLAG_BLE_CONNECTED;
     const bool ble_bond = sf & ZMK_STATUS_FLAG_BLE_BONDED;
 
-    /* Battery: source 0 = central, 1.. = peripherals. */
+#if IS_ENABLED(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE)
+    /*
+     * Battery gauges: center = dongle, outer two = keyboard halves. The
+     * advertisement carries the central half's battery (battery_level) and the
+     * peripheral half (peripheral_battery[0]); which physical side is central
+     * is a scanner-side config.
+     */
+    const uint8_t central = d->battery_level;
+    const uint8_t peripheral = d->peripheral_battery[0];
+    uint8_t left, right;
+    if (strcmp(CONFIG_PROSPECTOR_OLED_CENTRAL_SIDE, "RIGHT") == 0) {
+        left = peripheral;
+        right = central;
+    } else {
+        left = central;
+        right = peripheral;
+    }
+    zmk_widget_battery_gauge_set(left, dongle_battery(), right);
+#else
+    /* Legacy dongle_display battery: source 0 = central, 1.. = peripherals. */
     zmk_widget_dongle_battery_status_set(0, d->battery_level, usb_conn);
     for (int i = 0; i < 3; i++) {
         zmk_widget_dongle_battery_status_set(1 + i, d->peripheral_battery[i], false);
     }
+#endif
 
     /* Layer: use the broadcast name if printable, else fall back to the index. */
     static char layer_name[5];

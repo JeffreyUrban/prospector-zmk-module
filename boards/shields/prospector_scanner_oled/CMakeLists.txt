@@ -8,7 +8,10 @@ if(CONFIG_SHIELD_PROSPECTOR_SCANNER_OLED)
         target_sources(app PRIVATE src/custom_status_screen.c)
         target_sources(app PRIVATE src/widgets/output_status.c)
         target_sources(app PRIVATE src/widgets/output_status_sym.c)
-        target_sources(app PRIVATE src/widgets/battery_status.c)
+        target_sources_ifdef(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE app PRIVATE
+            src/widgets/battery_gauge.c)
+        target_sources_ifdef(CONFIG_PROSPECTOR_OLED_BATTERY_LEGACY app PRIVATE
+            src/widgets/battery_status.c)
         target_sources(app PRIVATE src/widgets/layer_status.c)
         target_sources(app PRIVATE src/widgets/modifiers.c)
         target_sources(app PRIVATE src/widgets/modifiers_sym.c)

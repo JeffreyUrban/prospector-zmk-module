@@ -61,4 +61,50 @@ config ZMK_DONGLE_DISPLAY_WPM_DISABLED_LAYERS
     string
     default ""
 
+# --- Battery widget selection ---
+choice PROSPECTOR_OLED_BATTERY_WIDGET
+    prompt "Battery widget style"
+    default PROSPECTOR_OLED_BATTERY_GAUGE
+    help
+      Which battery widget to show in the top-right corner.
+
+config PROSPECTOR_OLED_BATTERY_GAUGE
+    bool "Vertical gauges (left half / dongle / right half)"
+    help
+      Three vertical battery gauges filled bottom-to-top by percentage, no
+      text; center is the Prospector dongle, outer two are the keyboard halves.
+
+config PROSPECTOR_OLED_BATTERY_LEGACY
+    bool "dongle_display battery (percentage text + small icon)"
+    help
+      The original englmaxi/zmk-dongle-display battery widget: stacked rows of
+      percentage text plus a small battery icon.
+endchoice
+
+# --- Battery gauge widget (three vertical gauges: left / dongle / right) ---
+config PROSPECTOR_OLED_CENTRAL_SIDE
+    string "Physical side of the keyboard's central half (LEFT or RIGHT)"
+    default "LEFT"
+    help
+      Which physical side the keyboard's central half is on. Determines which
+      outer battery gauge shows the central vs peripheral half, since the
+      scanner cannot infer it. Follows the CONFIG_ZMK_STATUS_ADV_CENTRAL_SIDE
+      convention. LEFT (default) or RIGHT.
+
+config PROSPECTOR_OLED_BATTERY_LOW_THRESHOLD
+    int "Battery level below which a gauge blinks (percent)"
+    range 0 100
+    default 5
+    help
+      A battery gauge whose level is greater than 0 and below this threshold
+      blinks. Set to 0 to disable blinking.
+
+config PROSPECTOR_OLED_BATTERY_BLINK_MS
+    int "Battery low-blink half-period in milliseconds"
+    range 100 5000
+    default 500
+    help
+      On/off interval for the low-battery blink (500ms = pulse on and off
+      each half second).
+
 endif
