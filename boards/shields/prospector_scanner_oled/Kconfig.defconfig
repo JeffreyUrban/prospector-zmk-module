@@ -26,4 +26,39 @@ choice ZMK_DISPLAY_STATUS_SCREEN
     default ZMK_DISPLAY_STATUS_SCREEN_CUSTOM
 endchoice
 
+# --- dongle_display widget options (from englmaxi/zmk-dongle-display) ---
+# Defined here so the ported presentation code compiles unchanged. Enable the
+# widgets used by the default layout; bongo_cat / wpm are added later.
+config ZMK_DONGLE_DISPLAY_LAYER
+    bool
+    default y
+
+config ZMK_DONGLE_DISPLAY_LAYER_NAME_SCROLL_WIDTH
+    int
+    default 50
+
+config ZMK_DONGLE_DISPLAY_LAYER_TEXT_ALIGN
+    string
+    default "left"
+
+config ZMK_DONGLE_DISPLAY_MODIFIERS
+    bool
+    default y
+
+config ZMK_DONGLE_DISPLAY_MAC_MODIFIERS
+    bool
+    default y
+
+config ZMK_DONGLE_DISPLAY_BONGO_CAT
+    bool
+    default y
+
+config ZMK_DONGLE_DISPLAY_WPM
+    bool
+    default y
+
+config ZMK_DONGLE_DISPLAY_WPM_DISABLED_LAYERS
+    string
+    default ""
+
 endif

@@ -1,44 +1,108 @@
 /*
  * Copyright (c) 2024 The ZMK Contributors
+ * Copyright (c) 2024 Maximilian Engl
  *
  * SPDX-License-Identifier: MIT
  *
- * Prospector Scanner OLED - custom status screen.
- *
- * Bring-up placeholder with EXPLICIT monochrome colors (black background,
- * white foreground) and a crisp native 1bpp font. Real scanner widgets
- * (ported from englmaxi) replace this later.
+ * Status-screen layout / assembly derived from englmaxi/zmk-dongle-display
+ * (MIT). Kept verbatim except for the single scanner_transport_start() call
+ * that starts the data transport feeding the widgets. See ATTRIBUTION.md.
  */
 
-#include <lvgl.h>
+/* Transport hook: starts the LVGL timer that feeds widgets from the scanner. */
+void scanner_transport_start(void);
 
-/*
- * Monochrome polarity quirk on this stack: with LVGL 1bpp feeding the Zephyr
- * SSD1306/SH1106 driver, the on-panel result is inverted relative to LVGL's
- * color names -- lv_color_black() lights the pixel (bright) and lv_color_white()
- * leaves it off (dark). Setting the DT `inversion-on` flips both the pixel
- * format and the panel's normal/reverse command, so it cancels out and does not
- * help. We want a dark panel with bright text, so use these semantic aliases.
- */
-#define OLED_DARK lv_color_white() /* pixel off -> dark background */
-#define OLED_LIT  lv_color_black() /* pixel on  -> bright foreground */
+#include "custom_status_screen.h"
+#include "widgets/battery_status.h"
+#include "widgets/modifiers.h"
+#include "widgets/bongo_cat.h"
+#include "widgets/layer_status.h"
+#include "widgets/output_status.h"
+#include "widgets/hid_indicators.h"
+#include "widgets/wpm_status.h"
 
-lv_obj_t *zmk_display_status_screen(void) {
-    lv_obj_t *screen = lv_obj_create(NULL);
+#include <zephyr/logging/log.h>
+LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
-    /* Dark background, no border/padding. */
-    lv_obj_set_style_bg_color(screen, OLED_DARK, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(screen, 0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(screen, 0, LV_PART_MAIN);
+static struct zmk_widget_output_status output_status_widget;
 
-    /* Bright text in a crisp 1bpp font, centered. */
-    lv_obj_t *label = lv_label_create(screen);
-    lv_obj_set_style_text_color(label, OLED_LIT, LV_PART_MAIN);
-    lv_obj_set_style_text_font(label, &lv_font_unscii_8, LV_PART_MAIN);
-    lv_label_set_text(label, "Prospector\nOLED scanner");
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+#if IS_ENABLED(CONFIG_ZMK_BATTERY)
+static struct zmk_widget_dongle_battery_status dongle_battery_status_widget;
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_LAYER)
+static struct zmk_widget_layer_status layer_status_widget;
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_MODIFIERS)
+static struct zmk_widget_modifiers modifiers_widget;
+#if IS_ENABLED(CONFIG_ZMK_HID_INDICATORS)
+static struct zmk_widget_hid_indicators hid_indicators_widget;
+#endif
+
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_BONGO_CAT)
+static struct zmk_widget_bongo_cat bongo_cat_widget;
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_WPM)
+static struct zmk_widget_wpm_status wpm_status_widget;
+#endif
+
+lv_style_t global_style;
+
+lv_obj_t *zmk_display_status_screen() {
+    lv_obj_t *screen;
+
+    screen = lv_obj_create(NULL);
+
+    lv_style_init(&global_style);
+    lv_style_set_bg_color(&global_style, lv_color_white());
+    lv_style_set_bg_opa(&global_style, LV_OPA_COVER);
+    lv_style_set_text_color(&global_style, lv_color_black());
+    lv_style_set_text_font(&global_style, &lv_font_unscii_8);
+    lv_style_set_text_letter_space(&global_style, 1);
+    lv_style_set_text_line_space(&global_style, 1);
+    lv_obj_add_style(screen, &global_style, LV_PART_MAIN);
+    
+    zmk_widget_output_status_init(&output_status_widget, screen);
+    lv_obj_align(zmk_widget_output_status_obj(&output_status_widget), LV_ALIGN_TOP_LEFT, 0, 0);
+
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_WPM)
+    zmk_widget_wpm_status_init(&wpm_status_widget, screen);
+    lv_obj_align_to(zmk_widget_wpm_status_obj(&wpm_status_widget), zmk_widget_output_status_obj(&output_status_widget), LV_ALIGN_OUT_RIGHT_MID, 7, 0);
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_BONGO_CAT)
+    zmk_widget_bongo_cat_init(&bongo_cat_widget, screen);
+    lv_obj_align(zmk_widget_bongo_cat_obj(&bongo_cat_widget), LV_ALIGN_BOTTOM_RIGHT, 0, -7);
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_MODIFIERS)
+    zmk_widget_modifiers_init(&modifiers_widget, screen);
+    lv_obj_align(zmk_widget_modifiers_obj(&modifiers_widget), LV_ALIGN_BOTTOM_LEFT, 0, 0);
+#if IS_ENABLED(CONFIG_ZMK_HID_INDICATORS)
+    zmk_widget_hid_indicators_init(&hid_indicators_widget, screen);
+    lv_obj_align_to(zmk_widget_hid_indicators_obj(&hid_indicators_widget), zmk_widget_modifiers_obj(&modifiers_widget), LV_ALIGN_OUT_TOP_LEFT, 0, -2);
+#endif
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_LAYER)
+    zmk_widget_layer_status_init(&layer_status_widget, screen);
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_BONGO_CAT)
+    lv_obj_align_to(zmk_widget_layer_status_obj(&layer_status_widget), zmk_widget_bongo_cat_obj(&bongo_cat_widget), LV_ALIGN_BOTTOM_RIGHT, 0, 5);
+#else
+    lv_obj_align(zmk_widget_layer_status_obj(&layer_status_widget), LV_ALIGN_BOTTOM_RIGHT, 0, -3);
+#endif
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_BATTERY)
+    zmk_widget_dongle_battery_status_init(&dongle_battery_status_widget, screen);
+    lv_obj_align(zmk_widget_dongle_battery_status_obj(&dongle_battery_status_widget), LV_ALIGN_TOP_RIGHT, 0, 0);
+#endif
+
+    scanner_transport_start();
 
     return screen;
 }
