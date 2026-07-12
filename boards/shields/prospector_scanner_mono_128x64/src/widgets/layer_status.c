@@ -59,6 +59,10 @@ int zmk_widget_layer_status_init(struct zmk_widget_layer_status *widget, lv_obj_
     widget->obj = lv_label_create(parent);
     lv_obj_set_width(widget->obj, CONFIG_ZMK_DONGLE_DISPLAY_LAYER_NAME_SCROLL_WIDTH);
     lv_label_set_long_mode(widget->obj, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    /* Tighten letter spacing by 1px (0 vs the global 1). A 6-char name is then
+     * 6*8 = 48px, within the 50px box, so it fits without scrolling at all --
+     * which also removes the residual scroll jitter (no scroll, no jitter). */
+    lv_obj_set_style_text_letter_space(widget->obj, 0, LV_PART_MAIN);
 
     // Set text alignment based on config
     if (strcmp(CONFIG_ZMK_DONGLE_DISPLAY_LAYER_TEXT_ALIGN, "right") == 0) {
