@@ -38,7 +38,7 @@
 /* Provided by scanner_stub.c: drains the BT-RX ring buffer into keyboards[]. */
 void scanner_process_incoming(void);
 
-#if IS_ENABLED(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE)
+#if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
 /* The dongle's (scanner device's) own battery, if it reports one. */
 static uint8_t dongle_battery(void) {
 #if IS_ENABLED(CONFIG_ZMK_BATTERY)
@@ -47,7 +47,7 @@ static uint8_t dongle_battery(void) {
     return 0;
 #endif
 }
-#endif /* CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE */
+#endif /* CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE */
 
 static void transport_update_cb(lv_timer_t *timer) {
     ARG_UNUSED(timer);
@@ -58,7 +58,7 @@ static void transport_update_cb(lv_timer_t *timer) {
     struct zmk_keyboard_status *kbd =
         (idx >= 0) ? zmk_status_scanner_get_keyboard(idx) : NULL;
     if (kbd == NULL) {
-#if IS_ENABLED(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE)
+#if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
         /* No keyboard yet: still show the dongle gauge, halves empty. */
         zmk_widget_battery_gauge_set(0, dongle_battery(), 0);
 #endif
@@ -72,7 +72,7 @@ static void transport_update_cb(lv_timer_t *timer) {
     const bool ble_conn = sf & ZMK_STATUS_FLAG_BLE_CONNECTED;
     const bool ble_bond = sf & ZMK_STATUS_FLAG_BLE_BONDED;
 
-#if IS_ENABLED(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE)
+#if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
     /*
      * Battery gauges: center = dongle, outer two = keyboard halves. The
      * advertisement carries the central half's battery (battery_level) and the
@@ -82,7 +82,7 @@ static void transport_update_cb(lv_timer_t *timer) {
     const uint8_t central = d->battery_level;
     const uint8_t peripheral = d->peripheral_battery[0];
     uint8_t left, right;
-    if (strcmp(CONFIG_PROSPECTOR_OLED_CENTRAL_SIDE, "RIGHT") == 0) {
+    if (strcmp(CONFIG_PROSPECTOR_MONO_CENTRAL_SIDE, "RIGHT") == 0) {
         left = peripheral;
         right = central;
     } else {

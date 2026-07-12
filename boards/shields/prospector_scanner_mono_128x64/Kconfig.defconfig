@@ -1,7 +1,7 @@
 # Copyright (c) 2024 The ZMK Contributors
 # SPDX-License-Identifier: MIT
 
-if SHIELD_PROSPECTOR_SCANNER_OLED
+if SHIELD_PROSPECTOR_SCANNER_MONO_128X64
 
 config ZMK_KEYBOARD_NAME
     default "Prospector"
@@ -62,19 +62,19 @@ config ZMK_DONGLE_DISPLAY_WPM_DISABLED_LAYERS
     default ""
 
 # --- Battery widget selection ---
-choice PROSPECTOR_OLED_BATTERY_WIDGET
+choice PROSPECTOR_MONO_BATTERY_WIDGET
     prompt "Battery widget style"
-    default PROSPECTOR_OLED_BATTERY_GAUGE
+    default PROSPECTOR_MONO_BATTERY_GAUGE
     help
       Which battery widget to show in the top-right corner.
 
-config PROSPECTOR_OLED_BATTERY_GAUGE
+config PROSPECTOR_MONO_BATTERY_GAUGE
     bool "Vertical gauges (left half / dongle / right half)"
     help
       Three vertical battery gauges filled bottom-to-top by percentage, no
       text; center is the Prospector dongle, outer two are the keyboard halves.
 
-config PROSPECTOR_OLED_BATTERY_LEGACY
+config PROSPECTOR_MONO_BATTERY_LEGACY
     bool "dongle_display battery (percentage text + small icon)"
     help
       The original englmaxi/zmk-dongle-display battery widget: stacked rows of
@@ -82,7 +82,7 @@ config PROSPECTOR_OLED_BATTERY_LEGACY
 endchoice
 
 # --- Battery gauge widget (three vertical gauges: left / dongle / right) ---
-config PROSPECTOR_OLED_CENTRAL_SIDE
+config PROSPECTOR_MONO_CENTRAL_SIDE
     string "Physical side of the keyboard's central half (LEFT or RIGHT)"
     default "LEFT"
     help
@@ -91,7 +91,7 @@ config PROSPECTOR_OLED_CENTRAL_SIDE
       scanner cannot infer it. Follows the CONFIG_ZMK_STATUS_ADV_CENTRAL_SIDE
       convention. LEFT (default) or RIGHT.
 
-config PROSPECTOR_OLED_BATTERY_LOW_THRESHOLD
+config PROSPECTOR_MONO_BATTERY_LOW_THRESHOLD
     int "Battery level below which a gauge blinks (percent)"
     range 0 100
     default 5
@@ -99,7 +99,7 @@ config PROSPECTOR_OLED_BATTERY_LOW_THRESHOLD
       A battery gauge whose level is greater than 0 and below this threshold
       blinks. Set to 0 to disable blinking.
 
-config PROSPECTOR_OLED_BATTERY_BLINK_MS
+config PROSPECTOR_MONO_BATTERY_BLINK_MS
     int "Battery low-blink half-period in milliseconds"
     range 100 5000
     default 500

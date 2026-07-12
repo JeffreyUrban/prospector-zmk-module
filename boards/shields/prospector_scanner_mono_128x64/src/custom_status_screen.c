@@ -27,7 +27,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 static struct zmk_widget_output_status output_status_widget;
 
-#if IS_ENABLED(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE)
+#if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
 static struct zmk_widget_battery_gauge battery_gauge_widget;
 #else
 static struct zmk_widget_dongle_battery_status dongle_battery_status_widget;
@@ -100,7 +100,7 @@ lv_obj_t *zmk_display_status_screen() {
 #endif
 #endif
 
-#if IS_ENABLED(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE)
+#if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
     zmk_widget_battery_gauge_init(&battery_gauge_widget, screen);
     lv_obj_align(zmk_widget_battery_gauge_obj(&battery_gauge_widget), LV_ALIGN_TOP_RIGHT, 0, 0);
 #else

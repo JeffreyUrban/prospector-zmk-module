@@ -38,7 +38,7 @@ static uint8_t gauge_level[NUM_GAUGES];
 static bool blink_on = true;
 
 static bool is_low(uint8_t level) {
-    return level > 0 && level < CONFIG_PROSPECTOR_OLED_BATTERY_LOW_THRESHOLD;
+    return level > 0 && level < CONFIG_PROSPECTOR_MONO_BATTERY_LOW_THRESHOLD;
 }
 
 /*
@@ -129,7 +129,7 @@ int zmk_widget_battery_gauge_init(struct zmk_widget_battery_gauge *widget, lv_ob
         clear_gauge(canvas);
     }
 
-    lv_timer_create(blink_timer_cb, CONFIG_PROSPECTOR_OLED_BATTERY_BLINK_MS, NULL);
+    lv_timer_create(blink_timer_cb, CONFIG_PROSPECTOR_MONO_BATTERY_BLINK_MS, NULL);
 
     return 0;
 }

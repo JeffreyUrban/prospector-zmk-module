@@ -1,16 +1,16 @@
 # Copyright (c) 2024 The ZMK Contributors
 # SPDX-License-Identifier: MIT
 
-if(CONFIG_SHIELD_PROSPECTOR_SCANNER_OLED)
+if(CONFIG_SHIELD_PROSPECTOR_SCANNER_MONO_128X64)
     if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
         # Display presentation (status screen + widgets) ported from
         # englmaxi/zmk-dongle-display. See ATTRIBUTION.md.
         target_sources(app PRIVATE src/custom_status_screen.c)
         target_sources(app PRIVATE src/widgets/output_status.c)
         target_sources(app PRIVATE src/widgets/output_status_sym.c)
-        target_sources_ifdef(CONFIG_PROSPECTOR_OLED_BATTERY_GAUGE app PRIVATE
+        target_sources_ifdef(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE app PRIVATE
             src/widgets/battery_gauge.c)
-        target_sources_ifdef(CONFIG_PROSPECTOR_OLED_BATTERY_LEGACY app PRIVATE
+        target_sources_ifdef(CONFIG_PROSPECTOR_MONO_BATTERY_LEGACY app PRIVATE
             src/widgets/battery_status.c)
         target_sources(app PRIVATE src/widgets/layer_status.c)
         target_sources(app PRIVATE src/widgets/modifiers.c)
