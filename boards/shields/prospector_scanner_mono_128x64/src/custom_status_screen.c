@@ -112,7 +112,7 @@ lv_obj_t *zmk_display_status_screen() {
 
     /* Signal-strength meter, just left of the battery gauges. */
     zmk_widget_signal_status_init(&signal_status_widget, screen);
-    lv_obj_align(zmk_widget_signal_status_obj(&signal_status_widget), LV_ALIGN_TOP_RIGHT, -23, 4);
+    lv_obj_align(zmk_widget_signal_status_obj(&signal_status_widget), LV_ALIGN_TOP_RIGHT, -24, 6);
 
     scanner_transport_start();
 
