@@ -15,6 +15,7 @@ void scanner_transport_start(void);
 #include "custom_status_screen.h"
 #include "widgets/battery_gauge.h"
 #include "widgets/battery_status.h"
+#include "widgets/signal_status.h"
 #include "widgets/modifiers.h"
 #include "widgets/bongo_cat.h"
 #include "widgets/layer_status.h"
@@ -29,6 +30,7 @@ static struct zmk_widget_output_status output_status_widget;
 
 #if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
 static struct zmk_widget_battery_gauge battery_gauge_widget;
+static struct zmk_widget_signal_status signal_status_widget;
 #else
 static struct zmk_widget_dongle_battery_status dongle_battery_status_widget;
 #endif
@@ -107,6 +109,10 @@ lv_obj_t *zmk_display_status_screen() {
     zmk_widget_dongle_battery_status_init(&dongle_battery_status_widget, screen);
     lv_obj_align(zmk_widget_dongle_battery_status_obj(&dongle_battery_status_widget), LV_ALIGN_TOP_RIGHT, 0, 0);
 #endif
+
+    /* Signal-strength meter, just left of the battery gauges. */
+    zmk_widget_signal_status_init(&signal_status_widget, screen);
+    lv_obj_align(zmk_widget_signal_status_obj(&signal_status_widget), LV_ALIGN_TOP_RIGHT, -23, 4);
 
     scanner_transport_start();
 

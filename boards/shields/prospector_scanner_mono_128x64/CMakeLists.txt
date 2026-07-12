@@ -15,6 +15,7 @@ if(CONFIG_SHIELD_PROSPECTOR_SCANNER_MONO_128X64)
         target_sources(app PRIVATE src/widgets/layer_status.c)
         target_sources(app PRIVATE src/widgets/modifiers.c)
         target_sources(app PRIVATE src/widgets/modifiers_sym.c)
+        target_sources(app PRIVATE src/widgets/signal_status.c)
         target_sources_ifdef(CONFIG_ZMK_DONGLE_DISPLAY_WPM app PRIVATE
             src/widgets/wpm_status.c src/widgets/wpm_status_sym.c)
         target_sources_ifdef(CONFIG_ZMK_DONGLE_DISPLAY_BONGO_CAT app PRIVATE

@@ -25,6 +25,7 @@
 
 #include "widgets/battery_gauge.h"
 #include "widgets/battery_status.h"
+#include "widgets/signal_status.h"
 #include "widgets/layer_status.h"
 #include "widgets/modifiers.h"
 #include "widgets/output_status.h"
@@ -62,9 +63,12 @@ static void transport_update_cb(lv_timer_t *timer) {
         /* No keyboard yet: still show the dongle gauge, halves empty. */
         zmk_widget_battery_gauge_set(0, dongle_battery(), 0);
 #endif
+        zmk_widget_signal_status_set(0, false);
         return;
     }
     const struct zmk_status_adv_data *d = &kbd->data;
+
+    zmk_widget_signal_status_set(kbd->rssi, true);
 
     const uint8_t sf = d->status_flags;
     const bool usb_conn = sf & ZMK_STATUS_FLAG_USB_CONNECTED;
