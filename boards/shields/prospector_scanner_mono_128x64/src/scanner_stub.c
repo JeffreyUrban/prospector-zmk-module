@@ -37,6 +37,17 @@ LOG_MODULE_REGISTER(oled_scanner, LOG_LEVEL_INF);
  */
 #define KEYBOARD_TIMEOUT_MS CONFIG_PROSPECTOR_SCANNER_TIMEOUT_MS
 
+/*
+ * Distinguish "actual use" from "still here" for the display keep-alive by the
+ * advertisement rate: the broadcaster sends fast ads (~200ms) while the keyboard
+ * is active (typed within the last few seconds) and slow ads (~30s) when idle.
+ * Two ads closer together than this gap mean active use -> keep the display on.
+ * Slower (idle) ads do not, so the panel blanks a while after typing stops even
+ * though the keyboard keeps idle-advertising. Comfortably between the active
+ * (~0.2-1s) and idle (~30s) intervals.
+ */
+#define ACTIVE_AD_GAP_MS 3000
+
 /* keyboards[] and selected_keyboard are touched only from the display timer. */
 static struct zmk_keyboard_status keyboards[MAX_KEYBOARDS];
 static int selected_keyboard;
@@ -78,9 +89,18 @@ static bool incoming_pop(struct incoming_adv *out) {
 int scanner_msg_send_keyboard_data(const struct zmk_status_adv_data *adv_data,
                                    int8_t rssi, const char *device_name,
                                    const uint8_t *ble_addr, uint8_t ble_addr_type) {
-    /* A valid, channel-matched keyboard advertisement counts as activity, so
-     * the display stays awake while the keyboard is broadcasting. */
-    scanner_note_keyboard_activity();
+    /*
+     * Only fast (active-rate) advertisements count as keyboard use, so the
+     * display stays on while typing but blanks after ACTIVE stops -- ignoring
+     * the keyboard's slow idle "still here" ads. The next keystroke's fast ads
+     * wake it. (See ACTIVE_AD_GAP_MS.)
+     */
+    static uint32_t last_ad_uptime;
+    uint32_t now = k_uptime_get_32();
+    if (last_ad_uptime != 0 && (now - last_ad_uptime) < ACTIVE_AD_GAP_MS) {
+        scanner_note_keyboard_activity();
+    }
+    last_ad_uptime = now;
 
     struct incoming_adv e = {0};
     e.data = *adv_data;
