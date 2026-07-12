@@ -150,9 +150,22 @@ static void scan_callback(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
 #endif
                     uint8_t keyboard_channel = data->channel;
 
+                    /*
+                     * Channel pairing:
+                     *   scanner channel 0  -> receive every keyboard (default,
+                     *                         unpaired; includes channel-0
+                     *                         keyboards for backward compat).
+                     *   scanner channel N  -> receive ONLY keyboards on the same
+                     *                         channel N. Keyboards on other
+                     *                         channels (including uncoordinated
+                     *                         ones left on channel 0) are
+                     *                         ignored, so a pinned scanner never
+                     *                         shows the wrong keyboard.
+                     * (Previously `scanner_channel >= 10` accepted everything,
+                     * contradicting the documented 1-255 behavior and capping
+                     * strict pairing at 9 channels.)
+                     */
                     bool channel_match = (scanner_channel == 0 ||
-                                        scanner_channel >= 10 ||
-                                        keyboard_channel == 0 ||
                                         scanner_channel == keyboard_channel);
 
                     if (channel_match) {

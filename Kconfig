@@ -323,8 +323,11 @@ config PROSPECTOR_SCANNER_CHANNEL
       scanners are in the same area. Set the same channel number on
       both keyboard and scanner to create a dedicated pair.
 
-      Backward compatibility: Old keyboards (channel=0) will always
-      be received by scanners regardless of scanner channel setting.
+      A scanner set to 0 receives every keyboard (including keyboards
+      left on channel 0), for backward compatibility. A scanner set to
+      1-255 receives ONLY keyboards on that exact channel; keyboards on
+      any other channel (including channel 0) are ignored, so a pinned
+      scanner never picks up an uncoordinated nearby keyboard.
 
 config PROSPECTOR_SCANNER_IDLE_BRIGHTNESS_MS
     int "Time before dimming display when no keyboard activity"
