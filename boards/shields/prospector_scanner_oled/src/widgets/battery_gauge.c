@@ -25,7 +25,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
  */
 #define GAUGE_W 4
 #define GAUGE_H 18
-#define GAUGE_GAP 5
+#define GAUGE_GAP 4
 
 #define BUFFER_SIZE                                                                                \
     LV_CANVAS_BUF_SIZE(GAUGE_W, GAUGE_H, LV_COLOR_FORMAT_GET_BPP(LV_COLOR_FORMAT_L8),              \
