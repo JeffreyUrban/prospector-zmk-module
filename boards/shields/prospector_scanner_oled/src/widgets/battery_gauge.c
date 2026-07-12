@@ -68,7 +68,11 @@ static void draw_gauge(lv_obj_t *canvas, uint8_t level) {
         lv_canvas_set_px(canvas, 0, y, w, LV_OPA_COVER);
         lv_canvas_set_px(canvas, GAUGE_W - 1, y, w, LV_OPA_COVER);
     }
-    /* Fill the FULL interior width from the bottom up, proportional to level. */
+    /*
+     * Fill the interior from the bottom up, proportional to level, dithered as
+     * a checkerboard ((x+y) parity) to roughly halve the lit pixels so it reads
+     * dimmer. With a 2px interior this alternates left/right each row.
+     */
     const int top = 3;            /* first interior row (below top border) */
     const int bot = GAUGE_H - 2;  /* last interior row (above bottom border) */
     const int height = bot - top + 1;
@@ -76,7 +80,9 @@ static void draw_gauge(lv_obj_t *canvas, uint8_t level) {
     for (int i = 0; i < fill; i++) {
         int y = bot - i;
         for (int x = 1; x <= GAUGE_W - 2; x++) {
-            lv_canvas_set_px(canvas, x, y, w, LV_OPA_COVER);
+            if (((x + y) & 1) == 0) {
+                lv_canvas_set_px(canvas, x, y, w, LV_OPA_COVER);
+            }
         }
     }
 }
