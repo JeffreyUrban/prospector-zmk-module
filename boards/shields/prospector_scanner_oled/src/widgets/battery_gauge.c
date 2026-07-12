@@ -17,9 +17,10 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 #define NUM_GAUGES 3
 
-/* Gauge geometry (pixels). Height is ~2 text lines so it reads clearly. */
-#define GAUGE_W 11
-#define GAUGE_H 16
+/* Gauge geometry (pixels). Narrow so all three fit in roughly the space two
+ * used to take; height aligns the bottom with the top-left output icons. */
+#define GAUGE_W 7
+#define GAUGE_H 18
 #define GAUGE_GAP 1
 
 #define BUFFER_SIZE                                                                                \
@@ -49,8 +50,9 @@ static void draw_gauge(lv_obj_t *canvas, uint8_t level) {
     lv_color_t w = GAUGE_LIT;
     lv_canvas_fill_bg(canvas, GAUGE_DARK, LV_OPA_COVER);
 
-    /* Terminal nub (top center). */
-    for (int x = 4; x <= 6; x++) {
+    /* Terminal nub (top center), 3px wide. */
+    const int nub_c = (GAUGE_W - 1) / 2;
+    for (int x = nub_c - 1; x <= nub_c + 1; x++) {
         lv_canvas_set_px(canvas, x, 0, w, LV_OPA_COVER);
         lv_canvas_set_px(canvas, x, 1, w, LV_OPA_COVER);
     }
