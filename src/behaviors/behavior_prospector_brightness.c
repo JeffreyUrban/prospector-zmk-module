@@ -21,6 +21,17 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 #if DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT)
 
+/*
+ * The keymap is shared across split halves, so this behavior is compiled on the
+ * peripheral too -- but the status-advertisement module is central-only, so the
+ * real zmk_status_adv_brightness_adjust() isn't linked there. Behaviors only
+ * *execute* on the central, so a weak no-op lets the peripheral link; the real
+ * (strong) definition overrides it on the central.
+ */
+__attribute__((weak)) void zmk_status_adv_brightness_adjust(int delta) {
+    ARG_UNUSED(delta);
+}
+
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
     ARG_UNUSED(event);
