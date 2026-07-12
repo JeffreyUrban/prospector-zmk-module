@@ -25,19 +25,24 @@ struct layer_status_state {
 };
 
 static void set_layer_symbol(lv_obj_t *label, struct layer_status_state state) {
+    char text[13] = {};
     if (state.label == NULL) {
-        char text[7] = {};
-
-        sprintf(text, "%i", state.index);
-
-        lv_label_set_text(label, text);
+        snprintf(text, sizeof(text), "%i", state.index);
     } else {
-        char text[13] = {};
-
         snprintf(text, sizeof(text), "%s", state.label);
-
-        lv_label_set_text(label, text);
     }
+
+    /*
+     * The scanner transport calls this every ~300ms, but lv_label_set_text
+     * restarts the circular scroll animation each time -> the name lurches back
+     * to the start several times a second. englmaxi's original was event-driven
+     * (only on layer change). Skip redundant sets so the scroll stays smooth.
+     */
+    const char *cur = lv_label_get_text(label);
+    if (cur != NULL && strcmp(cur, text) == 0) {
+        return;
+    }
+    lv_label_set_text(label, text);
 }
 
 static void layer_status_update_cb(struct layer_status_state state) {

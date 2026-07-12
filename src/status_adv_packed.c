@@ -197,6 +197,10 @@ int prospector_adv_unpack(const uint8_t *in, size_t in_len,
 #if PROSPECTOR_ADV_EN_LAYER_NAME
     {
         size_t o = 0;
+        bool ended = false;
+        /* ALWAYS consume the full fixed field width; a short name just stops
+         * appending at its terminator. Breaking early would leave the bit
+         * cursor short and misalign every field after the layer name. */
         for (int i = 0; i < PROSPECTOR_ADV_LAYER_NAME_LEN; i++) {
             uint32_t code = prospector_bits_get(in, &bit, CONFIG_PROSPECTOR_ADV_LAYER_NAME_CHAR_BITS);
 #if CONFIG_PROSPECTOR_ADV_LAYER_NAME_CHAR_BITS == 6
@@ -205,9 +209,9 @@ int prospector_adv_unpack(const uint8_t *in, size_t in_len,
             char c = (char)code;
 #endif
             if (c == '\0') {
-                break;
+                ended = true;
             }
-            if (layer_name_out && o + 1 < layer_name_cap) {
+            if (!ended && layer_name_out && o + 1 < layer_name_cap) {
                 layer_name_out[o++] = c;
             }
         }
