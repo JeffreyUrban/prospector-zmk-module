@@ -10,6 +10,11 @@ if(CONFIG_ZMK_STATUS_ADVERTISEMENT)
         target_sources(app PRIVATE src/status_advertisement.c)
 endif()
 
+# Opt-in packed, field-selectable advertisement codec (keyboard + scanner).
+if(CONFIG_PROSPECTOR_ADV_PACKED)
+        target_sources(app PRIVATE src/status_adv_packed.c)
+endif()
+
 # Add scanner mode support
 if(CONFIG_PROSPECTOR_MODE_SCANNER)
         target_sources(app PRIVATE src/status_scanner.c)

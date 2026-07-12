@@ -30,6 +30,119 @@ config ZMK_STATUS_ADV_INTERVAL_MS
       Interval between status advertisement broadcasts in milliseconds.
       Lower values provide more frequent updates but consume more battery.
 
+# --- Opt-in packed, field-selectable advertisement --------------------------
+# See docs/advertisement_protocol.md. When enabled, the keyboard broadcasts and
+# the scanner decodes a bit-packed payload whose field set and widths are a
+# build-time contract. The keyboard and its scanner must be built with the SAME
+# selection; the on-wire version byte is a layout hash that detects drift.
+
+config PROSPECTOR_ADV_PACKED
+    bool "Use packed, field-selectable status advertisement"
+    default n
+    help
+      Opt in to the bit-packed advertisement payload instead of the fixed
+      26-byte struct. Spends bits only on selected fields, freeing space (e.g.
+      a longer layer name). The keyboard and scanner must match.
+
+if PROSPECTOR_ADV_PACKED
+
+config PROSPECTOR_ADV_LAYER_NAME_LEN
+    int "Packed layer name length (characters)"
+    range 0 20
+    default 6
+    help
+      Number of layer-name characters carried. Costs LEN x CHAR_BITS bits toward
+      the advertisement budget; an over-budget selection fails the build.
+
+config PROSPECTOR_ADV_LAYER_NAME_CHAR_BITS
+    int "Packed layer name bits per character (6 or 8)"
+    range 6 8
+    default 8
+    help
+      8 = full ASCII. 6 = 64-symbol alphabet (A-Z a-z 0-9 space hyphen);
+      characters outside the set are skipped. Use 6 or 8.
+
+config PROSPECTOR_ADV_KEYBOARD_ID_BITS
+    int "Packed keyboard_id width (bits)"
+    range 0 32
+    default 32
+    help
+      Width of the truncated HWINFO keyboard identifier when the keyboard_id
+      field is selected. 32 preserves legacy behavior; smaller trades collision
+      resistance for budget.
+
+# Field selection. Defaults match what the mono scanner displays; niche fields
+# default off. Enabled widths are summed at build time and must fit the budget.
+config PROSPECTOR_ADV_FIELD_BATTERY_CENTRAL
+    bool "Field: central/standalone battery"
+    default y
+
+config PROSPECTOR_ADV_FIELD_BATTERY_PERIPH_0
+    bool "Field: peripheral battery 0"
+    default y
+
+config PROSPECTOR_ADV_FIELD_BATTERY_PERIPH_1
+    bool "Field: peripheral battery 1"
+    default n
+
+config PROSPECTOR_ADV_FIELD_BATTERY_PERIPH_2
+    bool "Field: peripheral battery 2"
+    default n
+
+config PROSPECTOR_ADV_FIELD_ACTIVE_LAYER
+    bool "Field: active layer index"
+    default y
+
+config PROSPECTOR_ADV_FIELD_LAYER_NAME
+    bool "Field: layer name"
+    default y
+
+config PROSPECTOR_ADV_FIELD_PROFILE
+    bool "Field: BLE profile"
+    default y
+
+config PROSPECTOR_ADV_FIELD_PATCH_LEVEL
+    bool "Field: module patch level"
+    default n
+
+config PROSPECTOR_ADV_FIELD_DEV_FLAG
+    bool "Field: dev-build flag"
+    default n
+
+config PROSPECTOR_ADV_FIELD_CONNECTION_COUNT
+    bool "Field: connection count"
+    default n
+
+config PROSPECTOR_ADV_FIELD_STATUS_FLAGS
+    bool "Field: status flags (USB/BLE)"
+    default y
+
+config PROSPECTOR_ADV_FIELD_DEVICE_ROLE
+    bool "Field: device role"
+    default n
+
+config PROSPECTOR_ADV_FIELD_DEVICE_INDEX
+    bool "Field: device index"
+    default n
+
+config PROSPECTOR_ADV_FIELD_MODIFIER_FLAGS
+    bool "Field: modifier flags"
+    default y
+
+config PROSPECTOR_ADV_FIELD_WPM
+    bool "Field: words-per-minute"
+    default y
+
+config PROSPECTOR_ADV_FIELD_BRIGHTNESS
+    bool "Field: requested display brightness"
+    default n
+
+config PROSPECTOR_ADV_FIELD_KEYBOARD_ID
+    bool "Field: keyboard identifier"
+    default n
+
+endif # PROSPECTOR_ADV_PACKED
+
 config PROSPECTOR_EXPECTED_PERIPHERAL_COUNT
     int "Number of split peripherals expected for 'fully connected' state"
     range 0 3
