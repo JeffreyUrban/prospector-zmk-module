@@ -39,6 +39,11 @@
 /* Provided by scanner_stub.c: drains the BT-RX ring buffer into keyboards[]. */
 void scanner_process_incoming(void);
 
+/* Packed-layout version-mismatch state (scanner_stub.c) + overlay toggle
+ * (custom_status_screen.c). */
+extern bool scanner_version_mismatch_active(void);
+extern void scanner_show_version_mismatch(bool show);
+
 #if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
 /* The dongle's (scanner device's) own battery, if it reports one. */
 static uint8_t dongle_battery(void) {
@@ -58,6 +63,18 @@ static void transport_update_cb(lv_timer_t *timer) {
     int idx = zmk_status_scanner_get_primary_keyboard();
     struct zmk_keyboard_status *kbd =
         (idx >= 0) ? zmk_status_scanner_get_keyboard(idx) : NULL;
+
+    /*
+     * Version-mismatch takeover: a channel-matched keyboard we can't decode
+     * (mismatched packed layout). Only when there's no valid keyboard to show;
+     * a decodable keyboard always wins. The overlay covers the whole screen.
+     */
+    if (kbd == NULL && scanner_version_mismatch_active()) {
+        scanner_show_version_mismatch(true);
+        return;
+    }
+    scanner_show_version_mismatch(false);
+
     if (kbd == NULL) {
 #if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
         /* No keyboard yet: still show the dongle gauge, halves empty. */
@@ -102,11 +119,10 @@ static void transport_update_cb(lv_timer_t *timer) {
     }
 #endif
 
-    /* Layer: use the broadcast name if printable, else fall back to the index. */
-    static char layer_name[5];
-    memcpy(layer_name, d->layer_name, 4);
-    layer_name[4] = '\0';
-    const char *label = (layer_name[0] >= 0x20 && layer_name[0] < 0x7f) ? layer_name : NULL;
+    /* Layer: use the broadcast name (full, packed builds) if printable, else
+     * fall back to the index. */
+    const char *ln = kbd->layer_name_full;
+    const char *label = (ln[0] >= 0x20 && ln[0] < 0x7f) ? ln : NULL;
     zmk_widget_layer_status_set(d->active_layer, label);
 
     /* Modifiers: advertisement modifier_flags share the HID MOD_* bit layout. */

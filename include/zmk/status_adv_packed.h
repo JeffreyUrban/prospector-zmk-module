@@ -127,8 +127,13 @@ static inline uint32_t prospector_bits_get(const uint8_t *buf, size_t *bitpos,
  * ------------------------------------------------------------------------- */
 #if IS_ENABLED(CONFIG_PROSPECTOR_ADV_PACKED)
 
-/* Protocol revision of the registry itself. Bump when field IDs/widths change
- * (i.e. the fixed part of the layout), independent of per-build selection. */
+/*
+ * Optional manual input to the layout fingerprint, for a *semantic* change to
+ * an existing field that keeps the same bit position and width (rare). Field
+ * presence, widths, and order are captured automatically below, so you do NOT
+ * bump this for adding/removing/resizing fields — and NEVER for module
+ * releases, git revisions, or anything that doesn't change the wire interface.
+ */
 #define PROSPECTOR_ADV_PROTOCOL_VERSION 1
 
 /* Variable widths from Kconfig. */
@@ -209,17 +214,42 @@ BUILD_ASSERT(PROSPECTOR_ADV_FIELDS_BITS <= PROSPECTOR_ADV_FIELD_BUDGET_BITS,
              "reduce CONFIG_PROSPECTOR_ADV_LAYER_NAME_LEN or disable a field.");
 
 /*
- * Layout hash -> the on-wire `version` byte. Constant-folded: it has no runtime
- * input. Changes whenever the protocol version, the selected field set, or a
- * variable width changes, so keyboard and scanner only agree when their layouts
- * match. Not cryptographic — a change detector.
+ * Layout fingerprint -> the on-wire `version` byte. Constant-folded (no runtime
+ * input). It is a pure function of the COMMUNICATION STRUCTURE ONLY: for every
+ * field, whether it is present and its bit width -- and, since each field
+ * contributes at its own ID position, the field order too. It therefore changes
+ * if and only if the wire layout changes, and NEVER when the module version, a
+ * git revision, the build date, or any protocol-irrelevant config changes.
+ * Keyboard and scanner agree exactly when their packed layouts match. Not
+ * cryptographic -- a change detector.
  */
-#define PROSPECTOR_ADV_VERSION_HASH ((uint8_t)( \
-    ((uint32_t)PROSPECTOR_ADV_PROTOCOL_VERSION       * 0x9E3779B1u) ^ \
-    ((uint32_t)PROSPECTOR_ADV_ENABLED_MASK           * 0x85EBCA77u) ^ \
-    ((uint32_t)PROSPECTOR_ADV_LAYER_NAME_LEN         * 0xC2B2AE3Du) ^ \
-    ((uint32_t)PROSPECTOR_ADV_LAYER_NAME_CHAR_BITS   * 0x27D4EB2Fu) ^ \
-    ((uint32_t)PROSPECTOR_ADV_KEYBOARD_ID_BITS       * 0x165667B1u)) & 0xFFu)
+#define PROSPECTOR_ADV_FLD_FP(idx, en, w) \
+    ((uint32_t)((en) ? ((uint32_t)(w) + 1u) : 0u) * (0x9E3779B1u * ((uint32_t)(idx) + 1u)))
+
+#define PROSPECTOR_ADV_FP32 ( \
+    ((uint32_t)PROSPECTOR_ADV_PROTOCOL_VERSION * 0x01000193u) ^ \
+    PROSPECTOR_ADV_FLD_FP(0,  PROSPECTOR_ADV_EN_BATTERY_CENTRAL,  PROSPECTOR_ADV_W_BATTERY_CENTRAL)  ^ \
+    PROSPECTOR_ADV_FLD_FP(1,  PROSPECTOR_ADV_EN_BATTERY_PERIPH_0, PROSPECTOR_ADV_W_BATTERY_PERIPH_0) ^ \
+    PROSPECTOR_ADV_FLD_FP(2,  PROSPECTOR_ADV_EN_BATTERY_PERIPH_1, PROSPECTOR_ADV_W_BATTERY_PERIPH_1) ^ \
+    PROSPECTOR_ADV_FLD_FP(3,  PROSPECTOR_ADV_EN_BATTERY_PERIPH_2, PROSPECTOR_ADV_W_BATTERY_PERIPH_2) ^ \
+    PROSPECTOR_ADV_FLD_FP(4,  PROSPECTOR_ADV_EN_ACTIVE_LAYER,     PROSPECTOR_ADV_W_ACTIVE_LAYER)     ^ \
+    PROSPECTOR_ADV_FLD_FP(5,  PROSPECTOR_ADV_EN_LAYER_NAME,       PROSPECTOR_ADV_W_LAYER_NAME)       ^ \
+    PROSPECTOR_ADV_FLD_FP(6,  PROSPECTOR_ADV_EN_PROFILE,          PROSPECTOR_ADV_W_PROFILE)          ^ \
+    PROSPECTOR_ADV_FLD_FP(7,  PROSPECTOR_ADV_EN_PATCH_LEVEL,      PROSPECTOR_ADV_W_PATCH_LEVEL)      ^ \
+    PROSPECTOR_ADV_FLD_FP(8,  PROSPECTOR_ADV_EN_DEV_FLAG,         PROSPECTOR_ADV_W_DEV_FLAG)         ^ \
+    PROSPECTOR_ADV_FLD_FP(9,  PROSPECTOR_ADV_EN_CONNECTION_COUNT, PROSPECTOR_ADV_W_CONNECTION_COUNT) ^ \
+    PROSPECTOR_ADV_FLD_FP(10, PROSPECTOR_ADV_EN_STATUS_FLAGS,     PROSPECTOR_ADV_W_STATUS_FLAGS)     ^ \
+    PROSPECTOR_ADV_FLD_FP(11, PROSPECTOR_ADV_EN_DEVICE_ROLE,      PROSPECTOR_ADV_W_DEVICE_ROLE)      ^ \
+    PROSPECTOR_ADV_FLD_FP(12, PROSPECTOR_ADV_EN_DEVICE_INDEX,     PROSPECTOR_ADV_W_DEVICE_INDEX)     ^ \
+    PROSPECTOR_ADV_FLD_FP(13, PROSPECTOR_ADV_EN_MODIFIER_FLAGS,   PROSPECTOR_ADV_W_MODIFIER_FLAGS)   ^ \
+    PROSPECTOR_ADV_FLD_FP(14, PROSPECTOR_ADV_EN_WPM,              PROSPECTOR_ADV_W_WPM)              ^ \
+    PROSPECTOR_ADV_FLD_FP(15, PROSPECTOR_ADV_EN_BRIGHTNESS,       PROSPECTOR_ADV_W_BRIGHTNESS)       ^ \
+    PROSPECTOR_ADV_FLD_FP(16, PROSPECTOR_ADV_EN_KEYBOARD_ID,      PROSPECTOR_ADV_W_KEYBOARD_ID))
+
+/* Fold the 32-bit fingerprint down to the one on-wire byte. */
+#define PROSPECTOR_ADV_VERSION_HASH \
+    ((uint8_t)((PROSPECTOR_ADV_FP32 ^ (PROSPECTOR_ADV_FP32 >> 8) ^ \
+                (PROSPECTOR_ADV_FP32 >> 16) ^ (PROSPECTOR_ADV_FP32 >> 24)) & 0xFFu))
 
 /* Fold a 32-bit value to the low N bits (keyboard_id truncation). */
 #define PROSPECTOR_ADV_TRUNC(v, bits) \

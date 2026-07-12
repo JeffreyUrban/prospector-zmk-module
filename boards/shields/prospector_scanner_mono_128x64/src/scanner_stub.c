@@ -59,6 +59,8 @@ struct incoming_adv {
     char name[32];
     uint8_t ble_addr[6];
     uint8_t ble_addr_type;
+    char layer_name_full[ZMK_STATUS_LAYER_NAME_MAX];
+    uint8_t brightness;
 };
 
 #define INCOMING_BUF_SIZE 8 /* power of two */
@@ -88,7 +90,8 @@ static bool incoming_pop(struct incoming_adv *out) {
 /* ---- Contract: called from the BT RX thread ---- */
 int scanner_msg_send_keyboard_data(const struct zmk_status_adv_data *adv_data,
                                    int8_t rssi, const char *device_name,
-                                   const uint8_t *ble_addr, uint8_t ble_addr_type) {
+                                   const uint8_t *ble_addr, uint8_t ble_addr_type,
+                                   const char *layer_name_full, uint8_t brightness) {
     /*
      * Only fast (active-rate) advertisements count as keyboard use, so the
      * display stays on while typing but blanks after ACTIVE stops -- ignoring
@@ -105,6 +108,10 @@ int scanner_msg_send_keyboard_data(const struct zmk_status_adv_data *adv_data,
     struct incoming_adv e = {0};
     e.data = *adv_data;
     e.rssi = rssi;
+    if (layer_name_full) {
+        strncpy(e.layer_name_full, layer_name_full, sizeof(e.layer_name_full) - 1);
+    }
+    e.brightness = brightness;
     if (device_name) {
         strncpy(e.name, device_name, sizeof(e.name) - 1);
     }
@@ -142,6 +149,9 @@ void scanner_process_incoming(void) {
         keyboards[slot].ble_name[sizeof(keyboards[slot].ble_name) - 1] = '\0';
         memcpy(keyboards[slot].ble_addr, e.ble_addr, 6);
         keyboards[slot].ble_addr_type = e.ble_addr_type;
+        memcpy(keyboards[slot].layer_name_full, e.layer_name_full,
+               sizeof(keyboards[slot].layer_name_full));
+        keyboards[slot].brightness = e.brightness;
     }
 
     if (KEYBOARD_TIMEOUT_MS > 0) {
@@ -153,6 +163,25 @@ void scanner_process_incoming(void) {
             }
         }
     }
+}
+
+/* ---- Packed layout version-mismatch signal (BT RX sets, display reads) ----
+ * A channel-matched advertisement whose packed layout version differs from ours
+ * (mid-update pair). Aligned 32-bit read/write is atomic enough on this MCU. */
+#define VERSION_MISMATCH_WINDOW_MS 3000
+static volatile uint32_t last_version_mismatch; /* 0 = never */
+
+void scanner_report_version_mismatch(void) {
+    uint32_t t = k_uptime_get_32();
+    last_version_mismatch = t ? t : 1; /* avoid 0, which means "never" */
+}
+
+bool scanner_version_mismatch_active(void) {
+    uint32_t t = last_version_mismatch;
+    if (t == 0) {
+        return false;
+    }
+    return (k_uptime_get_32() - t) < VERSION_MISMATCH_WINDOW_MS;
 }
 
 /* ---- Contract: accessors (display context) ---- */

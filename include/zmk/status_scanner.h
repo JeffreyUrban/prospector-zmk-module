@@ -22,6 +22,8 @@ extern "C" {
 /**
  * @brief Keyboard status information
  */
+#define ZMK_STATUS_LAYER_NAME_MAX 24           // In-memory layer-name capacity
+
 struct zmk_keyboard_status {
     bool active;                           // Whether this slot is active
     uint32_t last_seen;                    // Timestamp of last advertisement
@@ -30,6 +32,8 @@ struct zmk_keyboard_status {
     char ble_name[32];                     // BLE device name from advertisement
     uint8_t ble_addr[6];                   // BLE MAC address for unique identification
     uint8_t ble_addr_type;                 // BLE address type (public/random)
+    char layer_name_full[ZMK_STATUS_LAYER_NAME_MAX]; // Full name (packed) or the 4-char field
+    uint8_t brightness;                    // Requested display brightness (packed; 0 = unset)
 };
 
 /**

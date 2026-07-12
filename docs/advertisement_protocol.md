@@ -29,18 +29,23 @@ Legacy advertising = 31 bytes total.
 | Consumer | Bytes |
 |---|---|
 | Flags AD (len, type, data) | 3 |
-| Mfg AD header: len + type(0xFF) + company id(0xFFFF) | 4 |
-| **Usable manufacturer data** | **24 (192 bits)** |
+| Mfg AD framing: len + type(0xFF) | 2 |
+| **Manufacturer data we build** | **26 (208 bits)** |
 
-## Fixed header — always present (32 bits)
+The 26-byte manufacturer buffer we build starts with the 0xFFFF company id (so
+BLE frames it and the scanner's magic check is unchanged), then our header, then
+the packed fields.
+
+## Fixed header — always present (6 bytes / 48 bits)
 
 | Field | Width | Notes |
 |---|---|---|
+| company id (0xFFFF) | 16 b | BLE manufacturer company id; also half the magic check |
 | magic (0xABCD) | 16 b | marks a Prospector ad; used by the core scan filter |
-| version | 8 b  | compatibility marker; scanner decodes only if it matches its own (see below) |
+| version | 8 b  | structure fingerprint; scanner decodes only if it matches its own (see below) |
 | channel | 8 b | pairing/filter; consumed by the core scan_callback, so mandatory |
 
-Leaves **~160 bits** for selectable fields.
+Leaves **160 bits** for selectable fields (the `BUILD_ASSERT` budget).
 
 ## Selectable field registry (canonical order = ID order)
 
@@ -90,22 +95,20 @@ decoding garbage. It must cover the **field selection**, not just the release �
 two same-release builds with different selected fields have incompatible
 layouts.
 
-**Decided: a build-time constant derived from the layout.** The byte is
-`low 8 bits of hash(PROTOCOL_VERSION, enabled field bitmap, widths, layer cfg)`
-— but the hash has *no runtime input*, so it is fully **constant-folded at
-compile time** into a single literal `PROSPECTOR_ADV_VERSION`. The shared
-registry header expresses the enabled set (a bitmap of
-`IS_ENABLED(CONFIG_PROSPECTOR_ADV_FIELD_x)` terms) and widths as compile-time
-constants; both the keyboard and scanner `#include` it against the same config,
-so each bakes in the **identical literal**. The keyboard transmits it; the
-scanner compares to its own copy. No per-advertisement hashing, no codegen step.
+**Decided: a build-time constant fingerprint of the wire structure only.** The
+byte folds, for every field, `(present? width : 0)` mixed at the field's ID
+position — so it captures the **selected set, every width, and the field order**.
+It is a pure function of the **communication interface structure**, and changes
+**if and only if** the wire layout changes — never on a module-version, git,
+build-date, or otherwise protocol-irrelevant change. The hash has *no runtime
+input*, so it is fully **constant-folded at compile time** into the literal
+`PROSPECTOR_ADV_VERSION_HASH`. Both keyboard and scanner `#include` the registry
+against the same config and bake in the **identical literal**; the keyboard
+transmits it, the scanner compares to its own copy. No per-ad hashing, no codegen.
 
-"Derived" only means the constant is *computed from the field selection* instead
-of typed by a human, so it can never drift from the actual wire layout. The
-whole point is to *avoid conflicts and alert on them*; this does that with zero
-manual discipline. It gives match/mismatch (all compatibility needs), not human
-ordering, which we never transmit. `PROTOCOL_VERSION` stays in source (an input
-to the hash) for changelogs.
+`PROTOCOL_VERSION` is a small optional input for a *semantic* change to an
+existing field that keeps the same bits (rare) — never bumped for releases or
+anything that doesn't change the interface.
 
 Residual risk: an 8-bit hash means two *different* layouts collide (same value,
 no alert) with probability 1/256 — only relevant during an update window, low
@@ -165,7 +168,7 @@ compile-time-known size → no in-payload length is the correct, standard choice
 ## Wire layout
 
 ```
-magic(16) | version(8) | channel(8) | <enabled fields, canonical order, tightly packed> | zero-pad to byte
+company_id(16=0xFFFF) | magic(16=0xABCD) | version(8) | channel(8) | <enabled fields, canonical order, tightly packed, MSB-first> | zero-pad to byte
 ```
 
 ## Open decisions
@@ -187,7 +190,9 @@ the change upstreamable rather than a hard fork of the wire format.
 
 ## Decided
 
-- **Version** — build-time constant, derived (hashed) from the layout.
+- **Version** — build-time constant fingerprint of the wire structure only
+  (per-field presence + width + order). Changes iff the layout changes; never on
+  module/git/date/unrelated-config changes.
 - **Framing** — no per-field lengths, no total length (BLE frames it); bit-pack
   with ignored trailing pad bits.
 - **Layer name** — user-configurable length + char width; drives the budget;

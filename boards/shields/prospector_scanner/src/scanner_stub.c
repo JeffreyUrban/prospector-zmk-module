@@ -579,7 +579,13 @@ static void process_work_handler(struct k_work *work) {
 
 int scanner_msg_send_keyboard_data(const struct zmk_status_adv_data *adv_data,
                                    int8_t rssi, const char *device_name,
-                                   const uint8_t *ble_addr, uint8_t ble_addr_type) {
+                                   const uint8_t *ble_addr, uint8_t ble_addr_type,
+                                   const char *layer_name_full, uint8_t brightness) {
+    /* The color scanner reads the legacy struct fields directly; the packed-only
+     * extras are unused here. */
+    ARG_UNUSED(layer_name_full);
+    ARG_UNUSED(brightness);
+
     struct incoming_adv entry;
     memcpy(&entry.data, adv_data, sizeof(struct zmk_status_adv_data));
     entry.rssi = rssi;

@@ -23,6 +23,7 @@
 
 #include <zmk/status_scanner.h>
 #include <zmk/status_advertisement.h>
+#include <zmk/status_adv_packed.h>
 
 // Scanner stub functions for lock-free ring buffer push
 #include "../boards/shields/prospector_scanner/src/scanner_stub.h"
@@ -96,6 +97,13 @@ static void scan_callback(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
     }
 
     const struct zmk_status_adv_data *prospector_data = NULL;
+    const char *fwd_layer_name = NULL;   /* full layer name to forward (packed) */
+    uint8_t fwd_brightness = 0;
+#if IS_ENABLED(CONFIG_PROSPECTOR_ADV_PACKED)
+    /* BT RX thread only -> static scratch for the unpacked result. */
+    static struct zmk_status_adv_data unpacked;
+    static char unpacked_layer[ZMK_STATUS_LAYER_NAME_MAX];
+#endif
 
     /* Parse advertisement data to extract both name and Prospector data */
     struct net_buf_simple buf_copy = *buf;
@@ -129,60 +137,71 @@ static void scan_callback(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
 
         /* Check for Prospector manufacturer data */
         if (ad_type == BT_DATA_MANUFACTURER_DATA) {
-            if (len >= sizeof(struct zmk_status_adv_data)) {
-                const struct zmk_status_adv_data *data = (const struct zmk_status_adv_data *)buf_copy.data;
-
-                if (data->manufacturer_id[0] == 0xFF && data->manufacturer_id[1] == 0xFF &&
-                    data->service_uuid[0] == 0xAB && data->service_uuid[1] == 0xCD) {
-
-                    LOG_DBG("Prospector data found - Length: %d", len);
-
-                    /* Channel filtering */
-                    extern uint8_t scanner_get_runtime_channel(void) __attribute__((weak));
-                    uint8_t scanner_channel = 0;
-                    if (scanner_get_runtime_channel) {
-                        scanner_channel = scanner_get_runtime_channel();
-                    }
+            const uint8_t *mfg = buf_copy.data;
+            /* Magic sits at fixed offsets 0-3 in BOTH the legacy struct and the
+             * packed header, so detection is format-independent. */
+            bool is_prospector = (len >= 4 &&
+                                  mfg[0] == 0xFF && mfg[1] == 0xFF &&
+                                  mfg[2] == 0xAB && mfg[3] == 0xCD);
+            if (is_prospector) {
+                /* Scanner's own channel: runtime override, else Kconfig. */
+                extern uint8_t scanner_get_runtime_channel(void) __attribute__((weak));
+                uint8_t scanner_channel = 0;
+                if (scanner_get_runtime_channel) {
+                    scanner_channel = scanner_get_runtime_channel();
+                }
 #ifdef CONFIG_PROSPECTOR_SCANNER_CHANNEL
-                    else {
-                        scanner_channel = CONFIG_PROSPECTOR_SCANNER_CHANNEL;
+                else {
+                    scanner_channel = CONFIG_PROSPECTOR_SCANNER_CHANNEL;
+                }
+#endif
+#if IS_ENABLED(CONFIG_PROSPECTOR_ADV_PACKED)
+                uint8_t keyboard_channel =
+                    (len > PROSPECTOR_ADV_OFF_CHANNEL) ? mfg[PROSPECTOR_ADV_OFF_CHANNEL] : 0;
+#else
+                uint8_t keyboard_channel =
+                    (len >= sizeof(struct zmk_status_adv_data)) ?
+                        ((const struct zmk_status_adv_data *)mfg)->channel : 0;
+#endif
+                /*
+                 * Channel pairing:
+                 *   scanner channel 0  -> receive every keyboard (default,
+                 *                         unpaired; includes channel-0 keyboards).
+                 *   scanner channel N  -> receive ONLY keyboards on channel N, so
+                 *                         a pinned scanner never shows the wrong
+                 *                         keyboard.
+                 */
+                bool channel_match = (scanner_channel == 0 ||
+                                      scanner_channel == keyboard_channel);
+                if (channel_match) {
+#if IS_ENABLED(CONFIG_PROSPECTOR_ADV_PACKED)
+                    int r = prospector_adv_unpack(mfg, len, &unpacked, unpacked_layer,
+                                                  sizeof(unpacked_layer), &fwd_brightness);
+                    if (r == 0) {
+                        prospector_data = &unpacked;
+                        fwd_layer_name = unpacked_layer;
+                        LOG_DBG("Valid packed data: Ch:%d->%d Bat=%d%%",
+                                keyboard_channel, scanner_channel, unpacked.battery_level);
+                    } else if (r == -EPROTO) {
+                        /* Channel-matched but layout version differs: alert. */
+                        extern void scanner_report_version_mismatch(void) __attribute__((weak));
+                        if (scanner_report_version_mismatch) {
+                            scanner_report_version_mismatch();
+                        }
+                        LOG_DBG("Packed adv version mismatch (Ch:%d)", keyboard_channel);
+                    }
+#else
+                    if (len >= sizeof(struct zmk_status_adv_data)) {
+                        prospector_data = (const struct zmk_status_adv_data *)mfg;
+                        LOG_DBG("Valid Prospector data: Ch:%d->%d Ver=%d Bat=%d%%",
+                                keyboard_channel, scanner_channel,
+                                prospector_data->version, prospector_data->battery_level);
                     }
 #endif
-                    uint8_t keyboard_channel = data->channel;
-
-                    /*
-                     * Channel pairing:
-                     *   scanner channel 0  -> receive every keyboard (default,
-                     *                         unpaired; includes channel-0
-                     *                         keyboards for backward compat).
-                     *   scanner channel N  -> receive ONLY keyboards on the same
-                     *                         channel N. Keyboards on other
-                     *                         channels (including uncoordinated
-                     *                         ones left on channel 0) are
-                     *                         ignored, so a pinned scanner never
-                     *                         shows the wrong keyboard.
-                     * (Previously `scanner_channel >= 10` accepted everything,
-                     * contradicting the documented 1-255 behavior and capping
-                     * strict pairing at 9 channels.)
-                     */
-                    bool channel_match = (scanner_channel == 0 ||
-                                        scanner_channel == keyboard_channel);
-
-                    if (channel_match) {
-                        prospector_data = data;
-                        LOG_DBG("Valid Prospector data: Ch:%d->%d Ver=%d Bat=%d%%",
-                               keyboard_channel, scanner_channel, data->version, data->battery_level);
-                    } else {
-                        LOG_DBG("Channel mismatch - KB Ch:%d, Scanner Ch:%d (filtered)",
-                                keyboard_channel, scanner_channel);
-                    }
                 } else {
-                    LOG_DBG("Non-Prospector device: %02X%02X %02X%02X",
-                           data->manufacturer_id[0], data->manufacturer_id[1],
-                           data->service_uuid[0], data->service_uuid[1]);
+                    LOG_DBG("Channel mismatch - KB Ch:%d, Scanner Ch:%d (filtered)",
+                            keyboard_channel, scanner_channel);
                 }
-            } else {
-                LOG_DBG("Manufacturer data too short: %d bytes", len);
             }
         }
 
@@ -196,9 +215,18 @@ static void scan_callback(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
                prospector_data->peripheral_battery[1], prospector_data->peripheral_battery[2],
                prospector_data->active_layer);
 
+        /* Legacy path has no separate full name: derive it from the 4-char field. */
+        char legacy_name[5];
+        if (fwd_layer_name == NULL) {
+            memcpy(legacy_name, prospector_data->layer_name, 4);
+            legacy_name[4] = '\0';
+            fwd_layer_name = legacy_name;
+        }
+
         const char *device_name = get_device_name(addr);
         int ret = scanner_msg_send_keyboard_data(prospector_data, rssi, device_name,
-                                                  addr->a.val, addr->type);
+                                                  addr->a.val, addr->type,
+                                                  fwd_layer_name, fwd_brightness);
         if (ret != 0) {
             LOG_DBG("Ring buffer full, advertisement dropped");
         }

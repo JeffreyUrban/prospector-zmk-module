@@ -28,6 +28,20 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 static struct zmk_widget_output_status output_status_widget;
 
+/* Full-screen takeover shown only on a packed-layout version mismatch. */
+static lv_obj_t *mismatch_overlay;
+
+void scanner_show_version_mismatch(bool show) {
+    if (mismatch_overlay == NULL) {
+        return;
+    }
+    if (show) {
+        lv_obj_clear_flag(mismatch_overlay, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(mismatch_overlay, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
 #if IS_ENABLED(CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE)
 static struct zmk_widget_battery_gauge battery_gauge_widget;
 static struct zmk_widget_signal_status signal_status_widget;
@@ -113,6 +127,28 @@ lv_obj_t *zmk_display_status_screen() {
     /* Signal-strength meter, just left of the battery gauges. */
     zmk_widget_signal_status_init(&signal_status_widget, screen);
     lv_obj_align(zmk_widget_signal_status_obj(&signal_status_widget), LV_ALIGN_TOP_RIGHT, -24, 6);
+
+    /*
+     * Version-mismatch overlay: full-screen, opaque, created last so it sits on
+     * top of every widget. Hidden until the transport detects a channel-matched
+     * keyboard whose packed layout version differs from ours. Factual text only
+     * (no call to action). Mono polarity: white bg = dark panel, black = lit.
+     */
+    mismatch_overlay = lv_obj_create(screen);
+    lv_obj_remove_style_all(mismatch_overlay);
+    lv_obj_set_size(mismatch_overlay, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(mismatch_overlay, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(mismatch_overlay, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(mismatch_overlay, LV_OBJ_FLAG_SCROLLABLE);
+    {
+        lv_obj_t *msg = lv_label_create(mismatch_overlay);
+        lv_label_set_text(msg, "VERSION\nMISMATCH");
+        lv_obj_set_style_text_color(msg, lv_color_black(), LV_PART_MAIN);
+        lv_obj_set_style_text_font(msg, &lv_font_unscii_8, LV_PART_MAIN);
+        lv_obj_set_style_text_align(msg, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_center(msg);
+    }
+    lv_obj_add_flag(mismatch_overlay, LV_OBJ_FLAG_HIDDEN);
 
     scanner_transport_start();
 

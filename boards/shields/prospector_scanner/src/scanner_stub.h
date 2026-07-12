@@ -22,11 +22,15 @@
  * @param device_name Keyboard device name
  * @param ble_addr BLE MAC address (6 bytes)
  * @param ble_addr_type BLE address type
+ * @param layer_name_full Full (possibly >4-char) layer name; built by the core
+ *                        for both legacy and packed ads
+ * @param brightness Requested display brightness level (0 when unused)
  * @return 0 on success, negative error code on failure
  */
 int scanner_msg_send_keyboard_data(const struct zmk_status_adv_data *adv_data,
                                    int8_t rssi, const char *device_name,
-                                   const uint8_t *ble_addr, uint8_t ble_addr_type);
+                                   const uint8_t *ble_addr, uint8_t ble_addr_type,
+                                   const char *layer_name_full, uint8_t brightness);
 
 /**
  * @brief Process incoming advertisements from ring buffer
