@@ -36,9 +36,18 @@ static bool is_low(uint8_t level) {
     return level > 0 && level < CONFIG_PROSPECTOR_OLED_BATTERY_LOW_THRESHOLD;
 }
 
+/*
+ * Monochrome polarity on this LVGL 1bpp -> SH1106 path is inverted vs LVGL's
+ * color names: lv_color_black() lights the pixel (renders white), lv_color_white()
+ * leaves it off (renders black/dark). So the outline/cap/fill are drawn with
+ * "black" (lit) on a "white" (dark) background.
+ */
+#define GAUGE_LIT lv_color_black()  /* pixel on  -> white on panel */
+#define GAUGE_DARK lv_color_white() /* pixel off -> dark on panel  */
+
 static void draw_gauge(lv_obj_t *canvas, uint8_t level) {
-    lv_color_t w = lv_color_white();
-    lv_canvas_fill_bg(canvas, lv_color_black(), LV_OPA_COVER);
+    lv_color_t w = GAUGE_LIT;
+    lv_canvas_fill_bg(canvas, GAUGE_DARK, LV_OPA_COVER);
 
     /* Terminal nub (top center). */
     for (int x = 4; x <= 6; x++) {
@@ -68,7 +77,7 @@ static void draw_gauge(lv_obj_t *canvas, uint8_t level) {
 }
 
 static void clear_gauge(lv_obj_t *canvas) {
-    lv_canvas_fill_bg(canvas, lv_color_black(), LV_OPA_COVER);
+    lv_canvas_fill_bg(canvas, GAUGE_DARK, LV_OPA_COVER);
 }
 
 static void redraw(void) {
