@@ -24,6 +24,7 @@
 #include <zmk/status_scanner.h>
 #include <zmk/status_advertisement.h>
 #include "../../prospector_scanner/src/scanner_stub.h"
+#include "scanner_activity.h"
 
 LOG_MODULE_REGISTER(oled_scanner, LOG_LEVEL_INF);
 
@@ -77,6 +78,10 @@ static bool incoming_pop(struct incoming_adv *out) {
 int scanner_msg_send_keyboard_data(const struct zmk_status_adv_data *adv_data,
                                    int8_t rssi, const char *device_name,
                                    const uint8_t *ble_addr, uint8_t ble_addr_type) {
+    /* A valid, channel-matched keyboard advertisement counts as activity, so
+     * the display stays awake while the keyboard is broadcasting. */
+    scanner_note_keyboard_activity();
+
     struct incoming_adv e = {0};
     e.data = *adv_data;
     e.rssi = rssi;

@@ -24,6 +24,8 @@ if(CONFIG_SHIELD_PROSPECTOR_SCANNER_MONO_128X64)
     # Scanner data path + transport that feeds the widgets.
     target_sources_ifdef(CONFIG_PROSPECTOR_MODE_SCANNER app PRIVATE src/scanner_stub.c)
     target_sources_ifdef(CONFIG_PROSPECTOR_MODE_SCANNER app PRIVATE src/scanner_transport.c)
+    # Feeds received advertisements into ZMK's activity monitor (display wake).
+    target_sources_ifdef(CONFIG_PROSPECTOR_MODE_SCANNER app PRIVATE src/scanner_activity.c)
 
     target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 endif()
