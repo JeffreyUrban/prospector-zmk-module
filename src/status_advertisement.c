@@ -373,6 +373,27 @@ static uint8_t packed_adv_buf[PROSPECTOR_ADV_MAX_BYTES];
 static char adv_layer_name_full[CONFIG_PROSPECTOR_ADV_LAYER_NAME_LEN + 1];
 #endif
 
+// Requested scanner-display brightness (0=off .. MAX). Broadcast when the
+// brightness field is selected; the next (active-rate) advertisement carries a
+// change, so a keypress propagates within ~200ms. Default max, not persisted --
+// every boot starts at max.
+static uint8_t requested_brightness = PROSPECTOR_BRIGHTNESS_MAX;
+
+void zmk_status_adv_brightness_adjust(int delta) {
+    int v = (int)requested_brightness + delta;
+    if (v < 0) {
+        v = 0;
+    } else if (v > PROSPECTOR_BRIGHTNESS_MAX) {
+        v = PROSPECTOR_BRIGHTNESS_MAX;
+    }
+    requested_brightness = (uint8_t)v;
+    LOG_INF("Prospector requested brightness -> %u", requested_brightness);
+}
+
+uint8_t zmk_status_adv_brightness_get(void) {
+    return requested_brightness;
+}
+
 // =====================================================================
 // HYBRID ADVERTISING
 // =====================================================================
@@ -902,7 +923,7 @@ static void build_manufacturer_payload(void) {
     // (brightness = 0 for now; the field defaults off — behavior comes later.)
     {
         size_t packed_len = 0;
-        prospector_adv_pack(&manufacturer_data, adv_layer_name_full, 0,
+        prospector_adv_pack(&manufacturer_data, adv_layer_name_full, requested_brightness,
                             packed_adv_buf, &packed_len);
 #if defined(BT_LE_ADV_OPT_FORCE_NAME_IN_AD)
         piggyback_sd[0].data = packed_adv_buf;

@@ -13,6 +13,7 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/drivers/display.h>
 #include <lvgl.h>
 #include <string.h>
 
@@ -55,6 +56,39 @@ static uint8_t dongle_battery(void) {
 }
 #endif /* CONFIG_PROSPECTOR_MONO_BATTERY_GAUGE */
 
+#if IS_ENABLED(CONFIG_PROSPECTOR_ADV_FIELD_BRIGHTNESS) && DT_HAS_CHOSEN(zephyr_display)
+/*
+ * Map the requested level (0=off .. 7=max) to the SH1106 contrast register
+ * (0..255) on a perceptual (gamma ~2.2) ramp, so the steps feel evenly spaced
+ * rather than bunched at the top. Level 0 blanks the panel. This is a tunable
+ * table -- the true contrast->luminance curve is display-specific.
+ */
+static const uint8_t brightness_contrast[PROSPECTOR_BRIGHTNESS_LEVELS] = {
+    0, 8, 20, 42, 78, 125, 185, 255,
+};
+
+static void apply_brightness(uint8_t level) {
+    static int last = -1;
+    if (level >= PROSPECTOR_BRIGHTNESS_LEVELS || (int)level == last) {
+        return;
+    }
+    last = level;
+
+    const struct device *disp = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
+    if (!device_is_ready(disp)) {
+        return;
+    }
+    if (level == 0) {
+        display_blanking_on(disp);
+    } else {
+        display_blanking_off(disp);
+        display_set_contrast(disp, brightness_contrast[level]);
+    }
+}
+#else
+static inline void apply_brightness(uint8_t level) { ARG_UNUSED(level); }
+#endif
+
 static void transport_update_cb(lv_timer_t *timer) {
     ARG_UNUSED(timer);
 
@@ -81,11 +115,16 @@ static void transport_update_cb(lv_timer_t *timer) {
         zmk_widget_battery_gauge_set(0, dongle_battery(), 0);
 #endif
         zmk_widget_signal_status_set(0, false);
+        /* No keyboard -> default to max brightness so the display stays visible. */
+        apply_brightness(PROSPECTOR_BRIGHTNESS_MAX);
         return;
     }
     const struct zmk_status_adv_data *d = &kbd->data;
 
     zmk_widget_signal_status_set(kbd->rssi, true);
+
+    /* Apply the keyboard's requested display brightness (packed builds). */
+    apply_brightness(kbd->brightness);
 
     const uint8_t sf = d->status_flags;
     const bool usb_conn = sf & ZMK_STATUS_FLAG_USB_CONNECTED;

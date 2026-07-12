@@ -91,7 +91,7 @@ enum prospector_adv_field {
 #define PROSPECTOR_ADV_W_DEVICE_INDEX      3
 #define PROSPECTOR_ADV_W_MODIFIER_FLAGS    8
 #define PROSPECTOR_ADV_W_WPM               7
-#define PROSPECTOR_ADV_W_BRIGHTNESS        2
+#define PROSPECTOR_ADV_W_BRIGHTNESS        3   /* 8 levels: 0=off .. 7=max */
 
 /* -------------------------------------------------------------------------
  * MSB-first bit codec. `bitpos` is a running cursor in bits from the start of

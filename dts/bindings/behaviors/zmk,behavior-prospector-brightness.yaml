@@ -1,0 +1,11 @@
+# Copyright (c) 2024 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: |
+  Adjust the Prospector scanner display brightness. The one parameter selects
+  direction: non-zero = brighter, 0 = dimmer. The level (0=off .. 7=max) is held
+  on the central and broadcast to the scanner.
+
+compatible: "zmk,behavior-prospector-brightness"
+
+include: one_param.yaml

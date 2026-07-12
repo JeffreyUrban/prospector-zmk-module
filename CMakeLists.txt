@@ -15,6 +15,11 @@ if(CONFIG_PROSPECTOR_ADV_PACKED)
         target_sources(app PRIVATE src/status_adv_packed.c)
 endif()
 
+# Brightness-control behavior (compiled when a keymap instantiates the node).
+if(CONFIG_DT_HAS_ZMK_BEHAVIOR_PROSPECTOR_BRIGHTNESS_ENABLED)
+        target_sources(app PRIVATE src/behaviors/behavior_prospector_brightness.c)
+endif()
+
 # Add scanner mode support
 if(CONFIG_PROSPECTOR_MODE_SCANNER)
         target_sources(app PRIVATE src/status_scanner.c)

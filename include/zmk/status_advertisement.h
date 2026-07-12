@@ -143,8 +143,25 @@ int zmk_status_advertisement_init(void);
 int zmk_status_advertisement_update(void);
 
 /**
+ * @brief Requested scanner display brightness (0=off .. 7=max), broadcast to the
+ * scanner. Default is max; not persisted (every boot starts at max).
+ */
+#define PROSPECTOR_BRIGHTNESS_LEVELS 8
+#define PROSPECTOR_BRIGHTNESS_MAX    (PROSPECTOR_BRIGHTNESS_LEVELS - 1)
+
+/**
+ * @brief Adjust the requested brightness by @p delta, clamped to [0, MAX], and
+ * push an advertisement so the scanner reacts promptly. Called by the
+ * prospector-brightness behavior.
+ */
+void zmk_status_adv_brightness_adjust(int delta);
+
+/** @brief Current requested brightness level (0..MAX). */
+uint8_t zmk_status_adv_brightness_get(void);
+
+/**
  * @brief Start status advertisement broadcasting
- * 
+ *
  * @return 0 on success, negative error code on failure
  */
 int zmk_status_advertisement_start(void);

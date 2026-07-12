@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2024 The ZMK Contributors
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * Instantiates the &prospector_brightness behavior. Include from a keymap:
+ *   #include <behaviors/prospector_brightness.dtsi>
+ * then bind, e.g.  &prospector_brightness 1  (brighter) / 0 (dimmer).
+ */
+
+/ {
+    behaviors {
+        /omit-if-no-ref/ prospector_brightness: behavior_prospector_brightness {
+            compatible = "zmk,behavior-prospector-brightness";
+            #binding-cells = <1>;
+        };
+    };
+};
