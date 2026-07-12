@@ -23,6 +23,7 @@
 #include <zmk/endpoints.h>
 #include <zmk/hid.h>
 #include <zmk/status_advertisement.h>
+#include <zmk/status_adv_packed.h>
 #include <zmk/events/modifiers_state_changed.h>
 #include <zmk/events/activity_state_changed.h>
 #include <zmk/activity.h>
@@ -364,6 +365,13 @@ _Static_assert(sizeof(struct zmk_status_adv_data) == MAX_MANUF_PAYLOAD,
                "zmk_status_adv_data must be exactly 26 bytes");
 
 static struct zmk_status_adv_data manufacturer_data; // Use structured data directly
+
+#if IS_ENABLED(CONFIG_PROSPECTOR_ADV_PACKED)
+// Packed-format scratch: the serialized payload sent in place of the struct,
+// plus the untruncated layer name (the struct only holds 4 chars).
+static uint8_t packed_adv_buf[PROSPECTOR_ADV_MAX_BYTES];
+static char adv_layer_name_full[CONFIG_PROSPECTOR_ADV_LAYER_NAME_LEN + 1];
+#endif
 
 // =====================================================================
 // HYBRID ADVERTISING
@@ -780,6 +788,24 @@ static void build_manufacturer_payload(void) {
              "L%d", layer % 10);
 #endif
 
+#if IS_ENABLED(CONFIG_PROSPECTOR_ADV_PACKED)
+    // Capture the untruncated layer name for the packed encoder (the struct
+    // field above is only 4 chars).
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
+    {
+        const char *ln = zmk_keymap_layer_name(layer);
+        if (ln && ln[0] != '\0') {
+            strncpy(adv_layer_name_full, ln, sizeof(adv_layer_name_full) - 1);
+            adv_layer_name_full[sizeof(adv_layer_name_full) - 1] = '\0';
+        } else {
+            snprintf(adv_layer_name_full, sizeof(adv_layer_name_full), "L%d", layer % 10);
+        }
+    }
+#else
+    snprintf(adv_layer_name_full, sizeof(adv_layer_name_full), "L%d", layer % 10);
+#endif
+#endif
+
     // Keyboard ID (4 bytes) - hardware-unique ID from HWINFO (FICR on nRF52840)
     // This ensures the same physical device always has the same ID,
     // even when BLE MAC address changes across profile switches.
@@ -868,6 +894,23 @@ static void build_manufacturer_payload(void) {
 #else
     LOG_DBG("Prospector %s: Battery %d%%, Layer %d",
             role_str, battery_level, layer);
+#endif
+
+#if IS_ENABLED(CONFIG_PROSPECTOR_ADV_PACKED)
+    // Serialize the packed payload and repoint the adv structures at it. The
+    // manufacturer entry then carries the packed bytes instead of the struct.
+    // (brightness = 0 for now; the field defaults off — behavior comes later.)
+    {
+        size_t packed_len = 0;
+        prospector_adv_pack(&manufacturer_data, adv_layer_name_full, 0,
+                            packed_adv_buf, &packed_len);
+#if defined(BT_LE_ADV_OPT_FORCE_NAME_IN_AD)
+        piggyback_sd[0].data = packed_adv_buf;
+        piggyback_sd[0].data_len = (uint8_t)packed_len;
+#endif
+        prospector_ad[1].data = packed_adv_buf;
+        prospector_ad[1].data_len = (uint8_t)packed_len;
+    }
 #endif
 }
 
