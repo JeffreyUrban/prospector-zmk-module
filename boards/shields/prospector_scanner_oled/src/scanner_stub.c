@@ -28,8 +28,13 @@
 LOG_MODULE_REGISTER(oled_scanner, LOG_LEVEL_INF);
 
 #define MAX_KEYBOARDS ZMK_STATUS_SCANNER_MAX_KEYBOARDS
-/* Drop a keyboard whose advertisements stop (idle interval can be 30s). */
-#define KEYBOARD_TIMEOUT_MS 60000
+/*
+ * Drop a keyboard only after this long without an advertisement. Uses the
+ * module's scanner timeout (default 8 min), which must exceed the keyboard's
+ * idle advertisement interval so an idle keyboard isn't dropped (and its
+ * battery isn't zeroed) between infrequent idle broadcasts. 0 = never drop.
+ */
+#define KEYBOARD_TIMEOUT_MS CONFIG_PROSPECTOR_SCANNER_TIMEOUT_MS
 
 /* keyboards[] and selected_keyboard are touched only from the display timer. */
 static struct zmk_keyboard_status keyboards[MAX_KEYBOARDS];
@@ -114,10 +119,13 @@ void scanner_process_incoming(void) {
         keyboards[slot].ble_addr_type = e.ble_addr_type;
     }
 
-    uint32_t now = k_uptime_get_32();
-    for (int i = 0; i < MAX_KEYBOARDS; i++) {
-        if (keyboards[i].active && (now - keyboards[i].last_seen) > KEYBOARD_TIMEOUT_MS) {
-            keyboards[i].active = false;
+    if (KEYBOARD_TIMEOUT_MS > 0) {
+        uint32_t now = k_uptime_get_32();
+        for (int i = 0; i < MAX_KEYBOARDS; i++) {
+            if (keyboards[i].active &&
+                (now - keyboards[i].last_seen) > KEYBOARD_TIMEOUT_MS) {
+                keyboards[i].active = false;
+            }
         }
     }
 }

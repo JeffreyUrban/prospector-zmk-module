@@ -22,6 +22,8 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define GAUGE_W 7
 #define GAUGE_H 18
 #define GAUGE_GAP 1
+/* Width of the level fill column (centered). Narrower = dimmer/less intense. */
+#define GAUGE_FILL_W 1
 
 #define BUFFER_SIZE                                                                                \
     LV_CANVAS_BUF_SIZE(GAUGE_W, GAUGE_H, LV_COLOR_FORMAT_GET_BPP(LV_COLOR_FORMAT_L8),              \
@@ -70,9 +72,10 @@ static void draw_gauge(lv_obj_t *canvas, uint8_t level) {
     const int bot = GAUGE_H - 2;  /* last interior row  */
     const int height = bot - top + 1;
     int fill = (level * height + 50) / 100;
+    const int fill_x0 = (GAUGE_W - GAUGE_FILL_W) / 2;
     for (int i = 0; i < fill; i++) {
         int y = bot - i;
-        for (int x = 2; x < GAUGE_W - 2; x++) {
+        for (int x = fill_x0; x < fill_x0 + GAUGE_FILL_W; x++) {
             lv_canvas_set_px(canvas, x, y, w, LV_OPA_COVER);
         }
     }
