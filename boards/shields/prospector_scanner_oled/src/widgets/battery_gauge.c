@@ -17,13 +17,15 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 #define NUM_GAUGES 3
 
-/* Gauge geometry (pixels). Narrow so all three fit in roughly the space two
- * used to take; height aligns the bottom with the top-left output icons. */
-#define GAUGE_W 7
+/*
+ * Gauge geometry (pixels). Each battery is narrow: 1px walls + a 2px interior
+ * (4px total). The fill spans the full interior width (no inset). A wide gap
+ * spreads the three across roughly the original span with black space between.
+ * Height aligns the bottom with the top-left output icons.
+ */
+#define GAUGE_W 4
 #define GAUGE_H 18
-#define GAUGE_GAP 1
-/* Width of the level fill column (centered). Narrower = dimmer/less intense. */
-#define GAUGE_FILL_W 1
+#define GAUGE_GAP 5
 
 #define BUFFER_SIZE                                                                                \
     LV_CANVAS_BUF_SIZE(GAUGE_W, GAUGE_H, LV_COLOR_FORMAT_GET_BPP(LV_COLOR_FORMAT_L8),              \
@@ -52,13 +54,12 @@ static void draw_gauge(lv_obj_t *canvas, uint8_t level) {
     lv_color_t w = GAUGE_LIT;
     lv_canvas_fill_bg(canvas, GAUGE_DARK, LV_OPA_COVER);
 
-    /* Terminal nub (top center), 3px wide. */
-    const int nub_c = (GAUGE_W - 1) / 2;
-    for (int x = nub_c - 1; x <= nub_c + 1; x++) {
+    /* Terminal nub (top), spanning the interior width. */
+    for (int x = 1; x <= GAUGE_W - 2; x++) {
         lv_canvas_set_px(canvas, x, 0, w, LV_OPA_COVER);
         lv_canvas_set_px(canvas, x, 1, w, LV_OPA_COVER);
     }
-    /* Body outline rectangle (x 0..GAUGE_W-1, y 2..GAUGE_H-1). */
+    /* Body outline rectangle (x 0..GAUGE_W-1, y 2..GAUGE_H-1); 1px walls. */
     for (int x = 0; x < GAUGE_W; x++) {
         lv_canvas_set_px(canvas, x, 2, w, LV_OPA_COVER);
         lv_canvas_set_px(canvas, x, GAUGE_H - 1, w, LV_OPA_COVER);
@@ -67,15 +68,14 @@ static void draw_gauge(lv_obj_t *canvas, uint8_t level) {
         lv_canvas_set_px(canvas, 0, y, w, LV_OPA_COVER);
         lv_canvas_set_px(canvas, GAUGE_W - 1, y, w, LV_OPA_COVER);
     }
-    /* Fill interior proportional to level, from the bottom up. */
-    const int top = 4;            /* first interior row */
-    const int bot = GAUGE_H - 2;  /* last interior row  */
+    /* Fill the FULL interior width from the bottom up, proportional to level. */
+    const int top = 3;            /* first interior row (below top border) */
+    const int bot = GAUGE_H - 2;  /* last interior row (above bottom border) */
     const int height = bot - top + 1;
     int fill = (level * height + 50) / 100;
-    const int fill_x0 = (GAUGE_W - GAUGE_FILL_W) / 2;
     for (int i = 0; i < fill; i++) {
         int y = bot - i;
-        for (int x = fill_x0; x < fill_x0 + GAUGE_FILL_W; x++) {
+        for (int x = 1; x <= GAUGE_W - 2; x++) {
             lv_canvas_set_px(canvas, x, y, w, LV_OPA_COVER);
         }
     }
