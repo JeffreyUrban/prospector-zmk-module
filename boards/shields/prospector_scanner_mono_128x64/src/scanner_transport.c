@@ -173,12 +173,26 @@ static void transport_update_cb(lv_timer_t *timer) {
     const int profile_index = PROSPECTOR_DECODE_PROFILE(d->profile_slot);
     zmk_widget_output_status_set(transport, connected, profile_index, ble_conn, ble_bond, usb_hid);
 
-    /* WPM: number widget + bongo-cat animation, both driven by wpm_value. */
+    /*
+     * WPM: while the keyboard sends frequent (typing) ads, show its live value.
+     * Once typing stops, the keyboard's broadcast value freezes (it only sends
+     * sparse idle ads), so decay the shown value to zero here instead. Drives
+     * both the number widget and the bongo-cat animation.
+     */
+#if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_WPM) || IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_BONGO_CAT)
+    extern bool scanner_keyboard_active(void);
+    static uint8_t shown_wpm;
+    if (scanner_keyboard_active()) {
+        shown_wpm = d->wpm_value;
+    } else if (shown_wpm > 0) {
+        shown_wpm = (uint8_t)((shown_wpm * 3) / 4); /* ~25%/tick -> 0 in a few seconds */
+    }
+#endif
 #if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_WPM)
-    zmk_widget_wpm_status_set(d->wpm_value, label);
+    zmk_widget_wpm_status_set(shown_wpm, label);
 #endif
 #if IS_ENABLED(CONFIG_ZMK_DONGLE_DISPLAY_BONGO_CAT)
-    zmk_widget_bongo_cat_set(d->wpm_value);
+    zmk_widget_bongo_cat_set(shown_wpm);
 #endif
 }
 

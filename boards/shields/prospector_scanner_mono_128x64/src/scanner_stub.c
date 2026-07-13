@@ -87,6 +87,19 @@ static bool incoming_pop(struct incoming_adv *out) {
     return true;
 }
 
+/* Last time frequent (active-rate) ads arrived == the keyboard is being typed
+ * on. BT RX writes, display timer reads; aligned 32-bit access is atomic here. */
+#define WPM_ACTIVE_WINDOW_MS 2500
+static volatile uint32_t last_active_uptime;
+
+bool scanner_keyboard_active(void) {
+    uint32_t t = last_active_uptime;
+    if (t == 0) {
+        return false;
+    }
+    return (k_uptime_get_32() - t) < WPM_ACTIVE_WINDOW_MS;
+}
+
 /* ---- Contract: called from the BT RX thread ---- */
 int scanner_msg_send_keyboard_data(const struct zmk_status_adv_data *adv_data,
                                    int8_t rssi, const char *device_name,
@@ -102,6 +115,7 @@ int scanner_msg_send_keyboard_data(const struct zmk_status_adv_data *adv_data,
     uint32_t now = k_uptime_get_32();
     if (last_ad_uptime != 0 && (now - last_ad_uptime) < ACTIVE_AD_GAP_MS) {
         scanner_note_keyboard_activity();
+        last_active_uptime = now; /* frequent ads == actively typing */
     }
     last_ad_uptime = now;
 
